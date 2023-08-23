@@ -1,0 +1,103 @@
+#include<Servo.h> // library used foe servo i.e. motors
+#include<LiquidCrystal_I2C.h> //library used for lcd display
+
+//this are response pins for sonar device.
+const int trigpin=6; //trigger the sound waves 
+const int echopin=7; //receives the sound waves
+
+long duration; //duartion of receiving the sound waves in us.
+/*
+velocity of sound is 340 m/s i.e 0.034 cm/us
+now t=distance/velocity
+and here distance shown by arduino  is of two time the distance so we divide it by 2.
+hence finally distance between the object and the sonar is = (t * 0.034)/2 in cm.  
+ */
+int distance; // distance between sonar and the object
+int convert;
+int prev=0;
+int count=100;
+
+LiquidCrystal_I2C lcd(0x3F,16,2); //setting up the lcd where 0x3F is the address of my I2C module attach on the lcd display
+                                  // and 16 is the number of the columns and 2 is the number of rows.
+
+Servo servo1,servo2; //creaating two servo objects name for seprate identification
+//runs one time and used to set the pins of the circuit.
+void setup() 
+{
+  Serial.begin(9600); //setting baud rate for serial monitor
+  servo1.attach(9);   //servo1 attach at pin 9
+  servo2.attach(10);  //servo2 attach at pin 10
+  pinMode(trigpin,OUTPUT); //setting trigger pin of sonar for outputting soundwaves
+  pinMode(echopin,INPUT);  //setting echo pin to receive the soundwaves
+  lcd.init();           //init lcd
+  lcd.backlight();      //to turn on the backlight of the lcd
+  lcd.clear();          //to clear everything on the lcd screen
+  lcd.setCursor(0,0);   //pointinf the cursor to the beginning of the screen.
+  lcd.print("sanatizer");// display it into the lcd
+  delay(1500);           //wait for 1.5ms.
+}
+//run continously 
+void loop()
+{
+  servo1.write(0);                                   //servo1 postion at 0 degree.
+  servo2.write(0);                                   //servo2 position at 0 degree.
+    digitalWrite(trigpin,LOW);                       //telling trig pin not to send any soundwaves
+    delayMicroseconds(2);                            //wait up to 2 ms.
+    digitalWrite(trigpin,HIGH);                      //telling trigpin to send soundwaves 
+    delayMicroseconds(10);                           //it is necessary to send soundwaves upto 10 ms to receives proper data 
+    duration=pulseIn(echopin,HIGH);                  //telling echo pin to receive the data and by pulseIN function duration in us is calculated
+    distance=duration*0.034/2;                       //distance between object and sonar is obtained
+    //Serial.print("distance = ");
+    //Serial.println(distance);
+    convert=180-(180/130)*distance;
+    Serial.print("convert = ");
+    Serial.println(convert);
+    prev=convert;
+
+    for (int pos = prev; pos <= convert; pos += 1) { // goes from 0 degrees to 180 degrees
+    // in steps of 1 degree
+    servo1.write(pos);
+    servo2.write(pos);// tell servo to go to position in variable 'pos'
+    delay(500); 
+    }
+    if(convert>110)//checking if angle is greater than 90
+    {
+      while(convert>110);//running upto it is pressed
+      count--;//increment after the object is removeed
+    }
+    if(count>0)
+    {
+    lcd.clear(); //to clear the screen
+    lcd.print("can be use ");//
+    lcd.print(count);        // display it on the lcd
+    lcd.print(" times ");    //
+    }
+    else
+    {
+      // this will display bottle is empty message in moving text format from left to right
+      lcd.clear();
+      lcd.print("Bottle Empty");
+      for(int i=0;i<12;i++)
+      {
+        //scroll one postion left
+        lcd.scrollDisplayLeft();
+        //wait a bit.
+        delay(140);
+      }
+      for(int i=0;i<27;i++)
+      {
+        //scroll one postion right
+        lcd.scrollDisplayRight();
+        //wait a bit.
+        delay(140);
+      }
+      for(int i=0;i<15;i++)
+      {
+        //scroll one postion left
+        lcd.scrollDisplayLeft();
+        //wait a bit.
+        delay(140);
+      }
+      
+    }
+}
